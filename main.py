@@ -42,6 +42,15 @@ async def detect(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Could not read image.")
 
+    # Downscale large photos before inference. A phone camera photo can be
+    # 4000x3000+ pixels; decoding and running inference on that full
+    # resolution can exceed Render's free-tier 512MB RAM limit and crash
+    # the whole service. YOLO's own input resolution is much smaller than
+    # this anyway, so nothing meaningful is lost by capping it here.
+    MAX_DIMENSION = 1280
+    if max(image.size) > MAX_DIMENSION:
+        image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.LANCZOS)
+
     results = model(image, verbose=False)[0]
 
     detections = []
